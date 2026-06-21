@@ -8,6 +8,10 @@
 
 3. Run the installer on your HPC Login Node.
 
+```bash
+bash <(curl -sSL https://raw.githubusercontent.com/wyy603/SlurmBot/refs/heads/master/src/install.sh)
+```
+
 ---
 
 ## ✨ What It Does

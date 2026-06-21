@@ -8,7 +8,7 @@ set -euo pipefail
 CONFIG="$HOME/.slurmbot/config.json"
 LAST_FILE="$HOME/.slurmbot/last_squeue.txt"
 LOG_FILE="$HOME/.slurmbot/server.log"
-INTERVAL=30
+INTERVAL=5
 
 mkdir -p "$HOME/.slurmbot"
 
@@ -130,16 +130,19 @@ format_job() {
 
     IFS='|' read -r jid name partition state start reason nodes <<< "$line"
 
-    printf '%s\n' "  • <code>${name}</code>"
+    local escaped_name
+    escaped_name=$(escape_html "$name")
+    printf '%s\n' "  • <code>${escaped_name}</code>"
+    printf '%s\n' "    job ID: ${jid}"
     printf '%s\n' "    partition: ${partition}"
 
     # State: R = Running, anything else = Pending / held etc.
     if [ "$state" = "R" ]; then
         printf '%s\n' "    started: ${start}"
-        [ -n "$nodes" ] && [ "$nodes" != "0" ] && printf '%s\n' "    nodes: ${nodes}"
+        [ -n "$nodes" ] && [ "$nodes" != "0" ] && printf '%s\n' "    nodes: ${nodes}" || true
     else
-        [ -n "$reason" ] && printf '%s\n' "    reason: ${reason}"
-        [ -n "$start" ] && [ "$start" != "N/A" ] && printf '%s\n' "    expected start: ${start}"
+        [ -n "$reason" ] && printf '%s\n' "    reason: ${reason}" || true
+        [ -n "$start" ] && [ "$start" != "N/A" ] && printf '%s\n' "    expected start: ${start}" || true
     fi
 }
 
@@ -148,10 +151,10 @@ format_job() {
 format_job_list() {
     local data="$1"
     local running="" pending="" output=""
+    local state
 
     while IFS= read -r line; do
         [ -z "$line" ] && continue
-        local state
         state=$(echo "$line" | awk -F'|' '{print $4}')
         if [ "$state" = "R" ]; then
             running+="$line"$'\n'
@@ -234,7 +237,9 @@ while true; do
                 while IFS= read -r jid; do
                     [ -z "$jid" ] && continue
                     line=$(find_job_lines "$raw_current" "$jid")
-                    [ -n "$line" ] && msg+="$(format_job "$line")"$'\n'
+                    if [ -n "$line" ]; then
+                        msg+="$(format_job "$line")"$'\n'
+                    fi
                 done <<< "$new_ids"
             fi
 
@@ -243,7 +248,9 @@ while true; do
                 while IFS= read -r jid; do
                     [ -z "$jid" ] && continue
                     line=$(find_job_lines "$last" "$jid")
-                    [ -n "$line" ] && msg+="$(format_job "$line")"$'\n'
+                    if [ -n "$line" ]; then
+                        msg+="$(format_job "$line")"$'\n'
+                    fi
                 done <<< "$done_ids"
             fi
 
@@ -252,9 +259,14 @@ while true; do
                 while IFS= read -r jid; do
                     [ -z "$jid" ] && continue
                     new_line=$(find_job_lines "$raw_current" "$jid")
-                    [ -n "$new_line" ] && msg+="$(format_job "$new_line")"$'\n'
+                    if [ -n "$new_line" ]; then
+                        msg+="$(format_job "$new_line")"$'\n'
+                    fi
                 done <<< "$changed_ids"
             fi
+
+            msg+="═══════════════════"$'\n'"Current jobs:"$'\n'
+            msg+="$(format_job_list "$raw_current")"
 
             notify_telegram "$msg"
         fi
