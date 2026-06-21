@@ -2,39 +2,79 @@
 # SlurmBot installer — deploys SlurmBot to ~/.slurmbot/ and configures
 # shell startup files so the server launches on login.
 #
-# Usage:
-#   cd src/hpc && bash install.sh
+# Usage (one-liner):
+#   curl -sSL https://raw.githubusercontent.com/wyy603/SlurmBot/master/src/install.sh | bash
 
 set -euo pipefail
 
+GITHUB_RAW="https://raw.githubusercontent.com/wyy603/SlurmBot/master/src"
 SLURMBOT_DIR="$HOME/.slurmbot"
-SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
 
-echo "=== SlurmBot Installer ==="
+echo "╔══════════════════════════════════════════╗"
+echo "║       🤖 SlurmBot Installer              ║"
+echo "╚══════════════════════════════════════════╝"
+echo ""
+
+# --- Preflight checks ---
+if ! command -v curl > /dev/null 2>&1; then
+    echo "ERROR: curl is required but not installed."
+    exit 1
+fi
+
+if ! command -v jq > /dev/null 2>&1; then
+    echo "ERROR: jq is required but not installed."
+    echo "       Install it with: sudo apt install jq  (or equivalent)"
+    exit 1
+fi
+
+if ! command -v squeue > /dev/null 2>&1; then
+    echo "WARNING: squeue not found. SlurmBot needs squeue to monitor jobs."
+    echo "         Are you on an HPC login node?"
+fi
+
+# --- Collect user configuration ---
+echo "── Configuration ──────────────────────────"
+echo ""
+
+read -r -p "  Slurm username: " SLURM_USER
+while [ -z "$SLURM_USER" ]; do
+    echo "  (required)"
+    read -r -p "  Slurm username: " SLURM_USER
+done
+
+read -r -p "  Telegram chat ID: " CHAT_ID
+while [ -z "$CHAT_ID" ]; do
+    echo "  (required — get your chat ID from @userinfobot on Telegram)"
+    read -r -p "  Telegram chat ID: " CHAT_ID
+done
+
 echo ""
 
 # --- Create target directory ---
 mkdir -p "$SLURMBOT_DIR"
-echo "[1/4] Created $SLURMBOT_DIR"
+echo "[1/5] Created $SLURMBOT_DIR"
 
-# --- Deploy server script ---
-cp "$SCRIPT_DIR/slurmbot-server.sh" "$SLURMBOT_DIR/slurmbot-server.sh"
+# --- Fetch server script ---
+echo "[2/5] Fetching slurmbot-server.sh..."
+curl -sSL "$GITHUB_RAW/slurmbot-server.sh" -o "$SLURMBOT_DIR/slurmbot-server.sh"
 chmod +x "$SLURMBOT_DIR/slurmbot-server.sh"
-echo "[2/4] Deployed slurmbot-server.sh"
+echo "      Done"
 
-# --- Deploy user config (only if not already present) ---
-if [ ! -f "$SLURMBOT_DIR/config.json" ]; then
-    cp "$SCRIPT_DIR/config.json" "$SLURMBOT_DIR/config.json"
-    echo "[3/4] Created $SLURMBOT_DIR/config.json"
-    echo "      >>> Please edit 'user' and 'telegram_chat_id' in $SLURMBOT_DIR/config.json <<<"
-else
-    echo "[3/4] $SLURMBOT_DIR/config.json already exists, skipped"
-fi
+# --- Fetch and fill config template ---
+echo "[3/5] Creating config.json..."
+curl -sSL "$GITHUB_RAW/config.template.json" -o "$SLURMBOT_DIR/config.json"
+# Substitute user and telegram_chat_id into the template
+jq --arg user "$SLURM_USER" --arg chat_id "$CHAT_ID" \
+    '.user = $user | .telegram_chat_id = $chat_id' \
+    "$SLURMBOT_DIR/config.json" > "$SLURMBOT_DIR/config.json.tmp"
+mv "$SLURMBOT_DIR/config.json.tmp" "$SLURMBOT_DIR/config.json"
+chmod 600 "$SLURMBOT_DIR/config.json"
+echo "      Config written (permissions locked to 600)"
 
 # --- Append shell fragments ---
 append_fragment() {
     local rc="$1"
-    local fragment="$2"
+    local fragment_name="$2"
 
     if [ ! -f "$rc" ]; then
         echo "      $rc does not exist, skipped"
@@ -46,29 +86,38 @@ append_fragment() {
         return
     fi
 
-    cat "$fragment" >> "$rc"
+    curl -sSL "$GITHUB_RAW/$fragment_name" >> "$rc"
     echo "      Appended SlurmBot fragment to $rc"
 }
 
-echo "[4/4] Configuring shell startup files..."
-append_fragment "$HOME/.bashrc" "$SCRIPT_DIR/.bashrc"
-append_fragment "$HOME/.zshrc"  "$SCRIPT_DIR/.zshrc"
+echo "[4/5] Configuring shell startup files..."
+append_fragment "$HOME/.bashrc" ".bashrc"
+append_fragment "$HOME/.zshrc"  ".zshrc"
 
 # --- Start the server now ---
+echo "[5/5] Starting SlurmBot server..."
 echo ""
-echo "=== Starting SlurmBot server ==="
+
 if pgrep -f "slurmbot-server.sh" > /dev/null 2>&1; then
-    echo "Server is already running."
+    echo "      Server is already running."
 else
     nohup bash "$SLURMBOT_DIR/slurmbot-server.sh" >> "$SLURMBOT_DIR/server.log" 2>&1 &
     sleep 1
     if pgrep -f "slurmbot-server.sh" > /dev/null 2>&1; then
-        echo "Server started successfully."
+        echo "      Server started successfully."
     else
-        echo "WARNING: Server may have failed to start. Check $SLURMBOT_DIR/server.log"
+        echo "      WARNING: Server may have failed to start."
+        echo "               Check $SLURMBOT_DIR/server.log"
     fi
 fi
 
 echo ""
-echo "=== Done ==="
-echo "Logs: $SLURMBOT_DIR/server.log"
+echo "╔══════════════════════════════════════════╗"
+echo "║       ✅ Installation complete!          ║"
+echo "╚══════════════════════════════════════════╝"
+echo ""
+echo "  Logs  → $SLURMBOT_DIR/server.log"
+echo "  Config → $SLURMBOT_DIR/config.json"
+echo ""
+echo "  SlurmBot will auto-start on every new shell login."
+echo "  A crontab watchdog checks every minute to keep it alive."
