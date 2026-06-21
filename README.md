@@ -1,8 +1,17 @@
 # 🤖 SlurmBot
 
+1. Start chat with Telegram Bot `@slurm_603_bot`.
+
+2. Get your Telegram ID.
+
+> 1. Open Telegram and search for [@userinfobot](https://t.me/userinfobot)
+> 2. Send `/start` — it replies with your numeric chat ID
+> 3. Paste that ID when the installer asks for it
+
+3. Run the installer on your HPC Login Node.
+
 ```bash
-# Run this on your HPC Login Node.
-curl -sSL https://raw.githubusercontent.com/wyy603/SlurmBot/master/src/install.sh | bash
+bash <(curl -sSL https://raw.githubusercontent.com/wyy603/SlurmBot/refs/heads/master/src/install.sh)
 ```
 
 ---
@@ -63,12 +72,6 @@ Running the one-liner above will:
 ### How it stays alive
 
 Every new shell (`bash` or `zsh`) checks if the server is running and starts it if not. This means SlurmBot launches on login and keeps running until the login node reboots — your next login will bring it back automatically.
-
-### How to get your Telegram chat ID
-
-1. Open Telegram and search for [@userinfobot](https://t.me/userinfobot)
-2. Send `/start` — it replies with your numeric chat ID
-3. Paste that ID when the installer asks for it
 
 ---
 
