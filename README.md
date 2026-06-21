@@ -6,10 +6,6 @@
 
 2. Get your Telegram ID.
 
-> 1. Open Telegram and search for [@userinfobot](https://t.me/userinfobot)
-> 2. Send `/start` — it replies with your numeric chat ID
-> 3. Paste that ID when the installer asks for it
-
 3. Run the installer on your HPC Login Node.
 
 ---
@@ -41,6 +37,14 @@ SlurmBot — jobs changed for yw10199
 ```
 
 **No more `squeue` refreshing.** SlurmBot watches for you.
+
+---
+
+## 📱 How to get your Telegram ID
+
+1. Open Telegram and search for [@userinfobot](https://t.me/userinfobot)
+2. Send `/start` — it replies with your numeric chat ID
+3. Paste that ID when the installer asks for it
 
 ---
 
