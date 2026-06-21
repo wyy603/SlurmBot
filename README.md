@@ -1,6 +1,6 @@
 # 🤖 SlurmBot
 
-1. Start chat with Telegram Bot `@slurm_603_bot`.
+1. Start chat with Telegram Bot [@slurm_603_bot](https://t.me/slurm_603_bot).
 
 2. Get your Telegram ID.
 
