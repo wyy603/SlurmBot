@@ -16,7 +16,7 @@ bash <(curl -sSL https://raw.githubusercontent.com/wyy603/SlurmBot/refs/heads/ma
 
 ## ✨ What It Does
 
-SlurmBot is a lightweight background daemon that monitors your **Slurm job queue** on an HPC cluster and sends **real-time Telegram notifications** whenever your jobs change state — new jobs submitted, jobs completed, or state transitions (pending → running, etc.).
+SlurmBot is a lightweight background daemon that monitors your **Slurm job queue** on an HPC cluster and sends **real-time Telegram notifications** whenever your jobs change state — new jobs submitted, jobs completed, or state transitions (pending → running, etc.). Even if the daemon is killed, it will be restarted when you log in to the login node (via `~/.bashrc` or `~/.zshrc`).
 
 You get a message on Telegram that looks like:
 
