@@ -62,8 +62,7 @@ Running the one-liner above will:
 
 ### How it stays alive
 
-- **On login**: every new shell (`bash` or `zsh`) checks if the server is running and starts it if not.
-- **Crontab watchdog**: a `* * * * *` cron entry checks every minute that the server process is alive, restarting it if it died. This guards against login-node reboots and OOM kills.
+Every new shell (`bash` or `zsh`) checks if the server is running and starts it if not. This means SlurmBot launches on login and keeps running until the login node reboots — your next login will bring it back automatically.
 
 ### How to get your Telegram chat ID
 
