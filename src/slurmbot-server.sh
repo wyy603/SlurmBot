@@ -206,28 +206,46 @@ while true; do
 
     if [ -f "$LAST_FILE" ]; then
         last=$(cat "$LAST_FILE")
+    fi
 
-        if [ "$raw_current" != "$last" ]; then
-            log "Change detected, building report..."
+    if [ -z "$last" ]; then
+        # First run — report the full initial queue so the user knows
+        # monitoring is active.
+        log "First run, reporting initial state"
 
-            curr_ids=$(extract_job_ids "$raw_current")
-            last_ids=$(extract_job_ids "$last")
+        if [ "$raw_current" = "(no jobs)" ]; then
+            msg="<b>SlurmBot</b> started monitoring <code>${USER_NAME}</code>"$'\n'"No jobs in queue."
+        else
+            msg="<b>SlurmBot</b> started monitoring <code>${USER_NAME}</code>"$'\n'"Initial queue:"$'\n'
+            msg+="$(format_job_list "$raw_current")"
+        fi
+        notify_telegram "$msg"
+    else
+        log "Computing diffs..."
 
-            # --- Compute diff ---
-            new_ids=$(comm -13 <(echo "$last_ids") <(echo "$curr_ids") 2>/dev/null || true)
-            done_ids=$(comm -23 <(echo "$last_ids") <(echo "$curr_ids") 2>/dev/null || true)
+        curr_ids=$(extract_job_ids "$raw_current")
+        last_ids=$(extract_job_ids "$last")
 
-            # Find common IDs with changed lines (state transitions like PD→R)
-            common_ids=$(comm -12 <(echo "$last_ids") <(echo "$curr_ids") 2>/dev/null || true)
-            changed_ids=""
-            while IFS= read -r jid; do
-                [ -z "$jid" ] && continue
-                old_line=$(find_job_lines "$last" "$jid")
-                new_line=$(find_job_lines "$raw_current" "$jid")
-                if [ "$old_line" != "$new_line" ] && [ -n "$old_line" ] && [ -n "$new_line" ]; then
-                    changed_ids+="$jid"$'\n'
-                fi
-            done <<< "$common_ids"
+        # --- Compute diff ---
+        new_ids=$(comm -13 <(echo "$last_ids") <(echo "$curr_ids") 2>/dev/null || true)
+        done_ids=$(comm -23 <(echo "$last_ids") <(echo "$curr_ids") 2>/dev/null || true)
+
+        # Find common IDs with changed lines (state transitions like PD→R)
+        common_ids=$(comm -12 <(echo "$last_ids") <(echo "$curr_ids") 2>/dev/null || true)
+        changed_ids=""
+        while IFS= read -r jid; do
+            [ -z "$jid" ] && continue
+            old_line=$(find_job_lines "$last" "$jid")
+            new_line=$(find_job_lines "$raw_current" "$jid")
+            old_noreason=$(echo "$old_line" | awk -F'|' 'BEGIN{OFS="|"} {print $1,$2,$3,$4,$7}')
+            new_noreason=$(echo "$new_line" | awk -F'|' 'BEGIN{OFS="|"} {print $1,$2,$3,$4,$7}')
+            if [ "$old_noreason" != "$new_noreason" ] && [ -n "$old_line" ] && [ -n "$new_line" ]; then
+                changed_ids+="$jid"$'\n'
+            fi
+        done <<< "$common_ids"
+
+        if [ -n "$new_ids" ] || [ -n "$done_ids" ] || [ -n "$changed_ids" ]; then
+            log "Changes detected, building report..."
 
             # --- Build Telegram message (HTML format) ---
             msg="<b>SlurmBot</b> — jobs changed for <code>${USER_NAME}</code>"
@@ -270,18 +288,6 @@ while true; do
 
             notify_telegram "$msg"
         fi
-    else
-        # First run — report the full initial queue so the user knows
-        # monitoring is active.
-        log "First run, reporting initial state"
-
-        if [ "$raw_current" = "(no jobs)" ]; then
-            msg="<b>SlurmBot</b> started monitoring <code>${USER_NAME}</code>"$'\n'"No jobs in queue."
-        else
-            msg="<b>SlurmBot</b> started monitoring <code>${USER_NAME}</code>"$'\n'"Initial queue:"$'\n'
-            msg+="$(format_job_list "$raw_current")"
-        fi
-        notify_telegram "$msg"
     fi
 
     echo "$raw_current" > "$LAST_FILE"
