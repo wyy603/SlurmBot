@@ -1,3 +1,5 @@
+<img src="assets/example.jpg" alt="Example Image" width="40%" />
+
 # 🤖 SlurmBot
 
 1. Start chat with Telegram Bot [@slurm_603_bot](https://t.me/slurm_603_bot).
@@ -9,12 +11,6 @@
 > 3. Paste that ID when the installer asks for it
 
 3. Run the installer on your HPC Login Node.
-
-![](assets/example.jpg)
-
-```bash
-bash <(curl -sSL https://raw.githubusercontent.com/wyy603/SlurmBot/refs/heads/master/src/install.sh)
-```
 
 ---
 
