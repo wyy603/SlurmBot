@@ -33,6 +33,10 @@ if ! command -v squeue > /dev/null 2>&1; then
 fi
 
 # --- Collect user configuration ---
+# Read from /dev/tty because when piped via curl|bash, stdin is the pipe
+# (already exhausted), which would make read() return immediately with EOF.
+exec < /dev/tty
+
 echo "── Configuration ──────────────────────────"
 echo ""
 
