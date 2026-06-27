@@ -97,9 +97,30 @@ append_fragment "$HOME/.zshrc"  ".zshrc"
 echo "[5/5] Starting SlurmBot server..."
 echo ""
 
+SLURMBOT_UPDATE="$SLURMBOT_DIR/last_update"
+
 if pgrep -f "slurmbot-server.sh" > /dev/null 2>&1; then
     echo "      Server is already running."
+elif [ -f "$SLURMBOT_UPDATE" ]; then
+    last_ts=$(cat "$SLURMBOT_UPDATE" 2>/dev/null) || last_ts="0"
+    case "$last_ts" in *[!0-9]*|"") last_ts=0;; esac
+    now=$(date +%s)
+    elapsed=$((now - last_ts))
+    if [ "$elapsed" -le 60 ] 2>/dev/null; then
+        echo "      Server was started less than 60s ago ($elapsed"$"s), skipping."
+    else
+        date +%s > "$SLURMBOT_UPDATE"
+        nohup bash "$SLURMBOT_DIR/slurmbot-server.sh" >> "$SLURMBOT_DIR/server.log" 2>&1 &
+        sleep 1
+        if pgrep -f "slurmbot-server.sh" > /dev/null 2>&1; then
+            echo "      Server started successfully."
+        else
+            echo "      WARNING: Server may have failed to start."
+            echo "               Check $SLURMBOT_DIR/server.log"
+        fi
+    fi
 else
+    date +%s > "$SLURMBOT_UPDATE"
     nohup bash "$SLURMBOT_DIR/slurmbot-server.sh" >> "$SLURMBOT_DIR/server.log" 2>&1 &
     sleep 1
     if pgrep -f "slurmbot-server.sh" > /dev/null 2>&1; then
